@@ -1,0 +1,85 @@
+Имя : 
+replaceEls
+
+Описание : 
+добавляем внутренним ссылкам title, основываясь на text, href
+проставляем слеш в конце урл
+
+Системное событие : 
+OnWebPagePrerender
+
+Код плагина (php):
+
+<?php
+$eventName = $modx->event->name;
+switch($eventName) {
+    case 'OnWebPagePrerender':
+        //$idPage = $modx->resource->get('id');
+        //if($idPage != 407) return; // для теста
+        // получаем доступ к содержанию страницы
+        $output = &$modx->resource->_output;
+        
+        // подключаем парсинг
+        require_once $_SERVER['DOCUMENT_ROOT'].'assets/libs/phpQuery/phpQuery.php';
+        
+        $doc = phpQuery::newDocument($output);
+        // находим все ссылки 
+        
+        $links = $doc->find('a');
+        foreach ($links as $link) {
+            // если есть title - пропускаем
+            if(pq($link)->attr('title')) continue;
+            // по умолчаниею title = text();
+            $title = pq($link)->text();
+            // если текст
+            
+            if(!$title) {
+                $href = pq($link)->attr('href');
+                if($href == '/') {
+                    pq($link)->attr('title', $modx->getOption('site_name'));
+                    continue;
+                } else {
+                    // если это номер телефона или skype - пропускаем
+                    $res = preg_match("/((\d){10,12}|(skype))/i", $href);
+                    if($res) continue;
+                }
+            } else {
+                // если это номер телефона в формате (096) 061-20-60 - пропускаем
+                $res = preg_match("/((\d){3})+/i", $title);
+                if($res) continue;
+                // иначе указываем $title
+                pq($link)->attr('title', $title);
+            }
+        }
+        
+        // добавляем изображению alt и title
+        $index = 1;
+        $pagetitle = $doc->find('title')->text();
+        
+        $images = $doc->find('img');
+        foreach ($images as $image) {
+            $alt = pq($image)->attr('alt');
+            $title = pq($image)->attr('title');
+            // если есть alt И title - continue
+            if(($alt && $title) && ($alt !== $title)) continue;
+            if(($alt && $title) && ($alt === $title)) {
+                $title = $alt .' : odessa-remont.com.ua';
+                pq($image)->attr('title', $title);
+                continue;
+            }
+            if(!$alt) {
+                $alt = $pagetitle . ' - '.$index;
+                pq($image)->attr('alt', $alt);
+            }
+            if(!$title) {
+                $title = $pagetitle . ' - '.$index.' : odessa-remont.com.ua';
+                pq($image)->attr('title', $title);
+            }
+            $index++;
+        }
+        
+        // сохраняем текст как $doc->htmlOuter();
+        $output = $doc->htmlOuter();
+        
+        break;
+}
