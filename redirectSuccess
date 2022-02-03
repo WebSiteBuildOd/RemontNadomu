@@ -1,0 +1,51 @@
+Имя :
+redirectSuccess
+
+Описание:
+формируем правильный редирект страниц
+
+Системное событие:
+OnWebPagePrerender
+
+Код плагина (php):
+
+<?php
+$eventName = $modx->event->name;
+switch($eventName) {
+    case 'OnWebPagePrerender':
+        
+        // проставляем слеш в конце урл
+        $REQUEST_URI = $_SERVER['REQUEST_URI'];
+        $expl = explode('?',$REQUEST_URI);
+        $site = $modx->getOption('site_url');
+        if(substr($site, -1) === '/') $site = substr($site,0,-1);
+        
+        $alias = $site.$expl[0];
+        //$modx->log(1, $alias);
+        $gets = $expl[1];
+        if(!empty($gets)) $gets = '?'.$gets;
+        
+        $rest = substr($alias, -1);
+        $isfolder = $modx->resource->get('isfolder'); // $modx->resource->get('isfolder')
+        
+        if($isfolder) {
+            if ($rest != '/')
+                {
+                    $domen = str_replace('http:', 'https:', $alias.'/'.$gets);
+                    
+                    header("Location: " . $domen);
+                    exit;
+                }
+        } else {
+            $pos = strpos($alias, '.html');
+            if(!$pos) {
+                if ($rest != '/') {
+                    $domen = str_replace('http:', 'https:', $alias.'.html'.$gets);
+                    header("Location: " . $domen);
+                    exit;
+                }
+            }
+        }
+        
+        break;
+}
