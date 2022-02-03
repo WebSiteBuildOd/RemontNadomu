@@ -1,0 +1,47 @@
+<?php
+
+/*
+    Открыть csv файл, получить ссылки на замену
+    с 404 на 301
+*/
+
+$file = '301.csv';
+$file = $_SERVER['DOCUMENT_ROOT'].$file;
+$handle = fopen($file, "r");
+$out = '';
+$arrReds = [];
+while (!feof($handle)) {
+    $buffer = fgets($handle, 6144);
+    // если начинается с # или пустая строка
+    if(substr($buffer,0,1) == '#' || strlen($buffer) == 1) {
+        continue;
+    }
+    
+    // разбиваем строки
+    $exp = explode(',https:', $buffer);
+    // получаем alias первой страницы (которую надо скрыть)
+    if(!$exp[0] || !$exp[1]) continue;
+    $aliasPage = trim($exp[0]);
+    $aliasPage = str_replace('https://poltava-remont.com.ua/','',$aliasPage);
+    
+    // выводим редирект на другую страницу, указанную в файле
+    $red = 'https:'.str_replace('"','',$exp[1]);
+    $red = trim(str_replace('https://poltava-remont.com.ua/','https://%{HTTP_HOST}/',$red));
+    
+    if(!$arrReds[$red]) $arrReds[$red] = [];
+    if($arrReds[$red][$aliasPage]) continue;
+    $arrReds[$red][$aliasPage] = $aliasPage;
+    
+}
+foreach($arrReds as $key => $item){
+    $base = '';
+    foreach($item as $it) {
+        if($base) $base .= '|';
+        $base .= $it;
+    }
+    $base = 'RewriteRule ^('.$base.')$ '.$key.' [R=301,L]';
+    echo($base);        
+    echo '<br>';
+}
+
+fclose($handle);
